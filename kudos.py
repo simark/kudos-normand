@@ -14,7 +14,7 @@ normand_id = cfg['data']['normand_id']
 #	proxies=proxies, verify=False
 #
 # in requests.
-# 
+#
 # proxies = {
 #   'http': 'http://127.0.0.1:1234',
 #   'https': 'http://127.0.0.1:1234',
@@ -43,18 +43,20 @@ for activity in activities:
 	if len(avatars) > 0:
 		avatar = avatars[0]
 		profile_link = avatar['href']
-		
+
 		if profile_link == '/athletes/{}'.format(normand_id):
 			kudo_btn = activity.select('button.btn-kudo')[0]
-			
 			kudo_img = kudo_btn.select('span.icon-kudo')[0]
-			
+
+			activity_url = activity.select('a.activity-map')[0]['href']
+			activity_url = 'http://www.strava.com{}'.format(activity_url)
+
 			if 'icon-dark' in kudo_img['class']:
 				activity_id = activity['id'].split('-')[1]
-				url = 'https://www.strava.com/feed/activity/{}/kudo'.format(activity_id)
-				print('Kudoing {}'.format(url))
+				kudo_url = 'https://www.strava.com/feed/activity/{}/kudo'.format(activity_id)
+				print('Kudoing {}'.format(activity_url))
 				headers = {
 					'X-CSRF-Token': csrf_token,
 				}
-				result = browser.post(url, headers=headers)
+				result = browser.post(kudo_url, headers=headers)
 				assert result.status_code == 200
