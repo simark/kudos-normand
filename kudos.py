@@ -2,12 +2,46 @@ import mechanicalsoup
 import configparser
 import sys
 
-cfg = configparser.ConfigParser()
-cfg.read('config.ini')
+def load_config():
+	cfg = configparser.ConfigParser()
+	cfg.read('config.ini')
 
-email = cfg['login']['email']
-password = cfg['login']['password']
-normand_id = cfg['data']['normand_id']
+	email = cfg['login']['email']
+	password = cfg['login']['password']
+	normand_id = cfg['data']['normand_id']
+
+	return email, password, normand_id
+
+def login_strava(email, password):
+	browser = mechanicalsoup.Browser()
+	login_page = browser.get("https://www.strava.com/login")
+	login_form = login_page.soup.select("#login_form")[0]
+	login_page.soup.select("#email")[0]['value'] = email
+	login_page.soup.select("#password")[0]['value'] = password
+
+	feed_page = browser.submit(login_form, "https://www.strava.com/session")
+
+	csrf_token = None
+	for meta in feed_page.soup.select('meta'):
+		if 'name' in meta.attrs and meta['name'] == 'csrf-token':
+			csrf_token = meta['content']
+	assert csrf_token is not None
+
+	return browser, csrf_token, feed_page
+
+def do_kudo(browser, csrf_token, activity_id):
+	kudo_url = 'https://www.strava.com/feed/activity/{}/kudo'.format(activity_id)
+	headers = {
+		'X-CSRF-Token': csrf_token,
+	}
+	result = browser.post(kudo_url, headers=headers)
+	assert result.status_code == 200
+
+email, password, normand_id = load_config()
+
+browser, csrf_token, feed_page = login_strava(email, password)
+
+
 
 # For debugging with mitmproxy.  Use with:
 #
@@ -20,23 +54,7 @@ normand_id = cfg['data']['normand_id']
 #   'https': 'http://127.0.0.1:1234',
 # }
 
-browser = mechanicalsoup.Browser()
-
-login_page = browser.get("https://www.strava.com/login")
-
-login_form = login_page.soup.select("#login_form")[0]
-login_page.soup.select("#email")[0]['value'] = email
-login_page.soup.select("#password")[0]['value'] = password
-
-page2 = browser.submit(login_form, "https://www.strava.com/session")
-
-csrf_token = None
-for meta in page2.soup.select('meta'):
-	if 'name' in meta.attrs and meta['name'] == 'csrf-token':
-		csrf_token = meta['content']
-assert csrf_token is not None
-
-activities = page2.soup.select('.entity-details')
+activities = feed_page.soup.select('.entity-details')
 
 for activity in activities:
 	avatars = activity.select('a.avatar-athlete')
@@ -53,10 +71,5 @@ for activity in activities:
 
 			if 'icon-dark' in kudo_img['class']:
 				activity_id = activity['id'].split('-')[1]
-				kudo_url = 'https://www.strava.com/feed/activity/{}/kudo'.format(activity_id)
 				print('Kudoing {}'.format(activity_url))
-				headers = {
-					'X-CSRF-Token': csrf_token,
-				}
-				result = browser.post(kudo_url, headers=headers)
-				assert result.status_code == 200
+				do_kudo(browser, csrf_token, activity_id)
