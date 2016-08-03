@@ -2,6 +2,11 @@ import mechanicalsoup
 import configparser
 import sys
 
+#proxies = {
+#  'http': 'http://127.0.0.1:1234',
+#  'https': 'http://127.0.0.1:1234',
+#}
+
 def load_config():
 	cfg = configparser.ConfigParser()
 	cfg.read('config.ini')
@@ -37,39 +42,46 @@ def do_kudo(browser, csrf_token, activity_id):
 	result = browser.post(kudo_url, headers=headers)
 	assert result.status_code == 200
 
-email, password, normand_id = load_config()
+def find_activities_from_feed_page(feed_page):
+	return feed_page.soup.select('.entity-details')
 
-browser, csrf_token, feed_page = login_strava(email, password)
+def do_comment(browser, csrf_token, activity_id, comment):
+	comment_url = 'https://www.strava.com/feed/activity/{}/comment'.format(activity_id)
+	headers = {
+		'X-CSRF-Token': csrf_token,
+	}
+	comment_data = {
+		'comment': comment,
+		'mentions': {}
+	}
+	result = browser.post(comment_url, headers=headers, json=comment_data)
+	assert result.status_code == 200
 
+if __name__ == "__main__":
 
+	email, password, normand_id = load_config()
 
-# For debugging with mitmproxy.  Use with:
-#
-#	proxies=proxies, verify=False
-#
-# in requests.
-#
-# proxies = {
-#   'http': 'http://127.0.0.1:1234',
-#   'https': 'http://127.0.0.1:1234',
-# }
+	browser, csrf_token, feed_page = login_strava(email, password)
 
-activities = feed_page.soup.select('.entity-details')
+	activities = find_activities_from_feed_page(feed_page)
 
-for activity in activities:
-	avatars = activity.select('a.avatar-athlete')
-	if len(avatars) > 0:
-		avatar = avatars[0]
-		profile_link = avatar['href']
+	for activity in activities:
+		avatars = activity.select('a.avatar-athlete')
+		if len(avatars) > 0:
+			avatar = avatars[0]
+			profile_link = avatar['href']
 
-		if profile_link == '/athletes/{}'.format(normand_id):
-			kudo_btn = activity.select('button.btn-kudo')[0]
-			kudo_img = kudo_btn.select('span.icon-kudo')[0]
+			if profile_link == '/athletes/{}'.format(normand_id):
+				kudo_btn = activity.select('button.btn-kudo')[0]
+				kudo_img = kudo_btn.select('span.icon-kudo')[0]
 
-			activity_url = activity.select('a.activity-map')[0]['href']
-			activity_url = 'http://www.strava.com{}'.format(activity_url)
-
-			if 'icon-dark' in kudo_img['class']:
+				activity_url = activity.select('a.activity-map')[0]['href']
+				activity_url = 'http://www.strava.com{}'.format(activity_url)
 				activity_id = activity['id'].split('-')[1]
-				print('Kudoing {}'.format(activity_url))
-				do_kudo(browser, csrf_token, activity_id)
+
+				if 'icon-dark' in kudo_img['class']:
+					print('Kudoing {}'.format(activity_url))
+					do_kudo(browser, csrf_token, activity_id)
+					comment = "Salut!"
+					print('Commenting {}'.format(comment))
+					do_comment(browser, csrf_token, activity_id, comment)
