@@ -1,6 +1,7 @@
 import mechanicalsoup
 import configparser
 import sys
+import generate_comment
 
 #proxies = {
 #  'http': 'http://127.0.0.1:1234',
@@ -82,6 +83,7 @@ if __name__ == "__main__":
 				if 'icon-dark' in kudo_img['class']:
 					print('Kudoing {}'.format(activity_url))
 					do_kudo(browser, csrf_token, activity_id)
-					comment = "Salut!"
+
+					comment = generate_comment.get_random_comment()
 					print('Commenting {}'.format(comment))
 					do_comment(browser, csrf_token, activity_id, comment)
