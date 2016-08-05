@@ -1,5 +1,5 @@
 import mechanicalsoup
-import configparser
+import yaml
 import sys
 import generate_comment
 
@@ -9,14 +9,14 @@ import generate_comment
 #}
 
 def load_config():
-	cfg = configparser.ConfigParser()
-	cfg.read('config.ini')
+        with open('config.yml') as ymlfile:
+                cfg = yaml.load(ymlfile)
 
-	email = cfg['login']['email']
-	password = cfg['login']['password']
-	normand_id = cfg['data']['normand_id']
+        email = cfg['login']['email']
+        password = cfg['login']['password']
+        normand_id = cfg['data']['normand_id']
 
-	return email, password, normand_id
+        return email, password, normand_id
 
 def login_strava(email, password):
 	browser = mechanicalsoup.Browser()
