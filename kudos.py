@@ -9,14 +9,14 @@ import generate_comment
 #}
 
 def load_config():
-        with open('config.yml') as ymlfile:
-                cfg = yaml.load(ymlfile)
+	with open('config.yml') as ymlfile:
+		cfg = yaml.load(ymlfile)
 
-        email = cfg['login']['email']
-        password = cfg['login']['password']
-        normand_id = cfg['data']['normand_id']
+	email = cfg['login']['email']
+	password = cfg['login']['password']
+	athlete_ids = cfg['athlete_ids']
 
-        return email, password, normand_id
+	return email, password, athlete_ids
 
 def login_strava(email, password):
 	browser = mechanicalsoup.Browser()
@@ -60,7 +60,7 @@ def do_comment(browser, csrf_token, activity_id, comment):
 
 if __name__ == "__main__":
 
-	email, password, normand_id = load_config()
+	email, password, athlete_ids = load_config()
 
 	browser, csrf_token, feed_page = login_strava(email, password)
 
@@ -72,7 +72,11 @@ if __name__ == "__main__":
 			avatar = avatars[0]
 			profile_link = avatar['href']
 
-			if profile_link == '/athletes/{}'.format(normand_id):
+            # Get the athlete from the url i.e '/athletes/1234567
+			# The YAML parser parsed the user ids as ints, so we cast the string to an int
+			athlete_id = int(profile_link[len('/athletes/'):])
+
+			if athlete_id in athlete_ids:
 				kudo_btn = activity.select('button.btn-kudo')[0]
 				kudo_img = kudo_btn.select('span.icon-kudo')[0]
 
