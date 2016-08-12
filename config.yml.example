@@ -2,6 +2,7 @@ login:
     email: me@example.com
     password: secretpassword
 
-data:
-    # i.e https://www.strava.com/athletes/{normand_id}
-    normand_id: 1234567
+athlete_ids:
+    # One user id per line
+    - 1234567
+    - 765432
