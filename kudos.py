@@ -1,3 +1,4 @@
+import argparse
 import mechanicalsoup
 import yaml
 import sys
@@ -67,6 +68,13 @@ def do_comment(browser, csrf_token, activity_id, comment):
 
 if __name__ == "__main__":
 
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('-d', '--dry-run',
+                           action='store_true',
+                           help=('Don\'t do any changes (kudos, comments), '
+                                 'just print what would be done.'))
+    args = argparser.parse_args()
+
     email, password, athlete_ids = load_config()
 
     browser, csrf_token, feed_page = login_strava(email, password)
@@ -79,7 +87,7 @@ if __name__ == "__main__":
             avatar = avatars[0]
             profile_link = avatar['href']
 
-# Get the athlete from the url i.e '/athletes/1234567
+            # Get the athlete from the url i.e '/athletes/1234567
             # The YAML parser parsed the user ids as ints, so we cast the
             # string to an int
             athlete_id = int(profile_link[len('/athletes/'):])
@@ -94,8 +102,10 @@ if __name__ == "__main__":
 
                 if 'icon-dark' in kudo_img['class']:
                     print('Kudoing {}'.format(activity_url))
-                    do_kudo(browser, csrf_token, activity_id)
+                    if not args.dry_run:
+                        do_kudo(browser, csrf_token, activity_id)
 
                     comment = generate_comment.get_random_comment()
                     print('Commenting {}'.format(comment))
-                    do_comment(browser, csrf_token, activity_id, comment)
+                    if not args.dry_run:
+                        do_comment(browser, csrf_token, activity_id, comment)
