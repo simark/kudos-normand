@@ -1,6 +1,7 @@
 import random
 import csv
 
+
 def get_random_comment():
     # list of popular English adjectives
     with open('dict/english-adjectives.csv') as adjectivesfile:
