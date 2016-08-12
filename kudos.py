@@ -1,13 +1,12 @@
 import argparse
 import mechanicalsoup
 import yaml
-import sys
 import generate_comment
 
 # proxies = {
 #  'http': 'http://127.0.0.1:1234',
 #  'https': 'http://127.0.0.1:1234',
-#}
+# }
 
 
 def load_config():
