@@ -95,7 +95,7 @@ if __name__ == "__main__":
                 kudo_btn = activity.select('button.btn-kudo')[0]
                 kudo_img = kudo_btn.select('span.icon-kudo')[0]
 
-                activity_url = activity.select('a.activity-map')[0]['href']
+                activity_url = activity.select('.entry-title > a')[0]['href']
                 activity_url = 'http://www.strava.com{}'.format(activity_url)
                 activity_id = activity['id'].split('-')[1]
 
