@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import mechanicalsoup
 import yaml
 import generate_comment
@@ -8,6 +9,14 @@ import generate_comment
 #  'https': 'http://127.0.0.1:1234',
 # }
 
+class KudosException(Exception):
+
+    def __init__(self, page_src):
+        self._page_src = page_src
+
+    @property
+    def page_src(self):
+        return self._page_src
 
 def load_config():
     with open('config.yml') as ymlfile:
@@ -23,7 +32,9 @@ def load_config():
 def login_strava(email, password):
     browser = mechanicalsoup.Browser()
     login_page = browser.get("https://www.strava.com/login")
-    login_form = login_page.soup.select("#login_form")[0]
+    login_form = login_page.soup.select("#login_form")
+    login_form = login_form[0]
+
     login_page.soup.select("#email")[0]['value'] = email
     login_page.soup.select("#password")[0]['value'] = password
 
@@ -65,8 +76,7 @@ def do_comment(browser, csrf_token, activity_id, comment):
     result = browser.post(comment_url, headers=headers, json=comment_data)
     assert result.status_code == 200
 
-if __name__ == "__main__":
-
+def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('-d', '--dry-run',
                            action='store_true',
@@ -78,33 +88,48 @@ if __name__ == "__main__":
 
     browser, csrf_token, feed_page = login_strava(email, password)
 
-    activities = find_activities_from_feed_page(feed_page)
+    try:
+        activities = find_activities_from_feed_page(feed_page)
 
-    for activity in activities:
-        avatars = activity.select('a.avatar-athlete')
-        if len(avatars) > 0:
-            avatar = avatars[0]
-            profile_link = avatar['href']
+        for activity in activities:
+            try:
+                avatars = activity.select('a.avatar-athlete')
+                if len(avatars) > 0:
+                    avatar = avatars[0]
+                    profile_link = avatar['href']
 
-            # Get the athlete from the url i.e '/athletes/1234567
-            # The YAML parser parsed the user ids as ints, so we cast the
-            # string to an int
-            athlete_id = int(profile_link[len('/athletes/'):])
+                    # Get the athlete from the url i.e '/athletes/1234567
+                    # The YAML parser parsed the user ids as ints, so we cast the
+                    # string to an int
+                    athlete_id = int(profile_link[len('/athletes/'):])
 
-            if athlete_id in athlete_ids:
-                kudo_btn = activity.select('button.btn-kudo')[0]
-                kudo_img = kudo_btn.select('span.icon-kudo')[0]
+                    if athlete_id in athlete_ids:
+                        kudo_btn = activity.select('button.btn-kudo')[0]
+                        kudo_img = kudo_btn.select('span.icon-kudo')[0]
 
-                activity_url = activity.select('.entry-title > a')[0]['href']
-                activity_url = 'http://www.strava.com{}'.format(activity_url)
-                activity_id = activity['id'].split('-')[1]
+                        activity_url = activity.select('.entry-title > a')[0]['href']
+                        activity_url = 'http://www.strava.com{}'.format(activity_url)
+                        activity_id = activity['id'].split('-')[1]
 
-                if 'icon-dark' in kudo_img['class']:
-                    print('Kudoing {}'.format(activity_url))
-                    if not args.dry_run:
-                        do_kudo(browser, csrf_token, activity_id)
+                        if 'icon-dark' in kudo_img['class']:
+                            print('Kudoing {}'.format(activity_url))
+                            if not args.dry_run:
+                                do_kudo(browser, csrf_token, activity_id)
 
-                    comment = generate_comment.get_random_comment()
-                    print('Commenting {}'.format(comment))
-                    if not args.dry_run:
-                        do_comment(browser, csrf_token, activity_id, comment)
+                            comment = generate_comment.get_random_comment()
+                            print('Commenting {}'.format(comment))
+                            if not args.dry_run:
+                                do_comment(browser, csrf_token, activity_id, comment)
+            except IndexError as e:
+                raise KudosException(str(activity))
+
+    except IndexError as e:
+        raise KudosException(str(feed_page.soup))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KudosException as e:
+        with open(datetime.datetime.now().strftime('dump_%Y%m%d_%H%M%S'), 'w') as f:
+            f.write(e.page_src)
